@@ -1,0 +1,21 @@
+{
+  "name": "all_dir_scanning",
+  "version": "1.0.0",
+  "description": "song file all dir scanning",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js",
+    "dev": "cross-env NODE_ENV=development node app.js",
+    "pro": "cross-env NODE_ENV=production node app.js"
+  },
+  "author": "gpd",
+  "license": "ISC",
+  "dependencies": {
+    "cross-env": "^7.0.3",
+    "lei-stream": "^1.4.2",
+    "moment": "^2.27.0",
+    "require-all": "^3.0.0",
+    "tracer": "^1.1.3",
+    "xlsx": "^0.17.4"
+  }
+}
