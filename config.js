@@ -104,7 +104,7 @@ const CORE_CONFIG = {
                     path.join(ROOT_PATH, '../', 'top_6000_3'),
                     path.join(ROOT_PATH, '../', 'top_1481')
                 ],
-                'outputs': path.join(ROOT_PATH, 'xlsx', 'scanning_catalogues', `media_${now}.xlsx`)
+                'outputs': path.join(ROOT_PATH, 'xlsx', 'scanning_catalogues')
             }
         }
     }
