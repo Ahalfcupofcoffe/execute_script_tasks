@@ -1,5 +1,6 @@
 
 const fs = require('fs');
+const path = require('path');
 
 const tracer = require('tracer');
 const XLXS = require('xlsx');
@@ -31,17 +32,88 @@ class Framework {
         });
     }
 
-    // 读取目录
-    readDir(path, options = {}) {
+    /**
+     * 同步读取目录
+     * @param route {String} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {string[]} 读取结果
+     */
+    readDirSync(route, options = {}) {
+        return fs.readdirSync(route);
+    }
+
+    /**
+     * 读取目录详情（目录名 --> 包含路径的目录名）
+     * @param route {String} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {string[]} 读取结果
+     */
+    readDirInfoSync(route, options = {}) {
+        let dirContents = this.readDirSync(route, options);
+        dirContents = dirContents.map((cur) => {
+            return path.join(route, cur);
+        });
+        return dirContents;
+    }
+
+    /**
+     * 读取多个目录详情（目录名 --> 包含路径的目录名）
+     * @param routes {Array} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {[]}
+     */
+    readDirsInfoSync(routes, options = {}) {
+        let dirContents = [];
+        for (let route of routes) {
+            dirContents = dirContents.concat(this.readDirInfoSync(route, options));
+        }
+        return dirContents;
+    }
+
+    /**
+     * 读取目录
+     * @param route {String} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {Promise<[]>} 读取结果
+     */
+    readDir(route, options = {}) {
         return new Promise((resolve, reject) => {
-            fs.readdir(path, options, (err, files) => {
+            fs.readdir(route, options, (err, files) => {
                 if (err) {
-                    this.logger.error(`读取目录：${path}失败，错误信息：${err}`);
-                    return reject([]);
+                    this.logger.error(`读取目录：${route}失败，错误信息：${err}`);
+                    return reject(err);
                 }
                 resolve(files);
             })
         });
+    }
+
+    /**
+     * 读取目录详情（目录名 --> 包含路径的目录名）
+     * @param route {String} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {Promise<[]>} 读取结果
+     */
+    async readDirInfo(route, options = {}) {
+        let dirContents = await this.readDir(route, options);
+        dirContents = dirContents.map((cur) => {
+            return path.join(route, cur);
+        });
+        return dirContents;
+    }
+
+    /**
+     * 读取多个目录详情（目录名 --> 包含路径的目录名）
+     * @param routes {Array} 读取路径
+     * @param options {Object | String} 选项
+     * @returns {Promise<[]>} 读取结果
+     */
+    async readDirsInfo(routes, options = {}) {
+        let dirContents = [];
+        for (let route of routes) {
+            dirContents = dirContents.concat(await this.readDirInfo(route, options));
+        }
+        return dirContents;
     }
 
     // 检查文件或目录
@@ -140,6 +212,11 @@ class Framework {
 
     }
 
+    /**
+     * 读取excel
+     * @param path {String} 路径
+     * @returns {Promise<[]>} 读取结果
+     */
     async readExcel(path) {
         return new Promise((resolve, reject) => {
             try {
@@ -158,12 +235,25 @@ class Framework {
         });
     }
 
+    /**
+     * 读取多个excel
+     * @param paths {Array} 路径
+     * @returns {Promise<[]>} 读取结果
+     */
+    async readExcels(paths) {
+        let data = [];
+        for (let path of paths) {
+            data = data.concat(await this.readExcel(path));
+        }
+        return data;
+    }
+
     readFile(path, options = {}) {
         return new Promise((resolve, reject) => {
             fs.readFile(path, options, (err, data) => {
                 if (err) {
                     this.logger.error(`读取文件：${path}失败，错误信息：${err}`);
-                    return reject('');
+                    return reject(err);
                 }
                 resolve(data);
             });
@@ -198,6 +288,25 @@ class Framework {
                resolve();
            }));
         });
+    }
+
+    /**
+     * 删除文件夹（递归删除）
+     * @param folderPath {String} 文件夹路径
+     * @returns {Promise<void>}
+     */
+    async deleteFolder(folderPath) {
+        if (fs.existsSync(folderPath)) {
+            fs.readdirSync(folderPath).forEach( (file)=> {
+                const filePath = path.join(folderPath, file);
+                if (fs.statSync(filePath).isDirectory()) { // recurse
+                    this.deleteFolder(filePath);
+                } else { // delete file
+                    fs.unlinkSync(filePath);
+                }
+            });
+            fs.rmdirSync(folderPath);
+        }
     }
 
     isArray(arg) {

@@ -5,12 +5,13 @@
   "main": "app.js",
   "scripts": {
     "test": "node app.js",
-    "dev": "cross-env NODE_ENV=development node app.js",
-    "pro": "cross-env NODE_ENV=production node app.js"
+    "dev": "cross-env NODE_ENV=development nodemon app.js",
+    "pro": "cross-env NODE_ENV=production nodemon app.js"
   },
   "author": "gpd",
   "license": "ISC",
   "dependencies": {
+    "async": "^3.2.3",
     "cross-env": "^7.0.3",
     "lei-stream": "^1.4.2",
     "moment": "^2.27.0",

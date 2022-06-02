@@ -2,6 +2,7 @@
 
 const XLXS = require('xlsx');
 const path = require('path');
+const fs = require('fs');
 const moment = require('moment');
 
 module.exports = (app, taskInfo) => {
@@ -12,8 +13,6 @@ module.exports = (app, taskInfo) => {
                 return `media_${now}_${catalogueName}.xlsx`;
             }
         },
-
-
 
         async task(app) {
             let readInputDirs = this.taskInfo.inputs;
@@ -104,6 +103,8 @@ module.exports = (app, taskInfo) => {
                 '是否有图片': 0,
                 '是否有mv图片': 0,
                 '是否是空目录': 0,
+                '是否存在OKB文件': 0,
+                'OKB文件名': ''
             };
             if (files.length === 0) {
                 return fileFormatData;
@@ -112,6 +113,19 @@ module.exports = (app, taskInfo) => {
             }
             for (let file of files) {
                 const fileSuffix = path.extname(file);
+                try {
+                    let fileStat = fs.statSync(path.join(fileDir, file));
+                    if (fileStat.size === 0) {
+                        fileFormatData['是否存在OKB文件']++;
+                        if (fileFormatData['OKB文件名']) {
+                            fileFormatData['OKB文件名'] += `&&${file}`;
+                        } else {
+                            fileFormatData['OKB文件名'] = file;
+                        }
+                    }
+                } catch (err) {
+                    app.logger.error(`获取文件信息出错(err:${err})`);
+                }
                 if (fileSuffix === '.json') {
                     fileFormatData['是否有json文件']++;
                 } else if (fileSuffix === '.xml' || fileSuffix === '.lrc') {
@@ -143,170 +157,116 @@ module.exports = (app, taskInfo) => {
                     app.logger.error(`出现未知格式后缀，打印一下文件名：${file}，所在目录：${fileDir}`);
                 }
             }
+
             return fileFormatData
         },
 
         async filterNormalMedia(mediaData) {
-            const filterData = [];
-            for (let mediaItem of mediaData) {
-                let filterFlag = false;
-                if (mediaItem['是否有json文件'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有xml/lrc文件'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有mp4'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有m4a_accom'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有m4a_org'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有图片'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有mv图片'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否是空目录'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['JSON文件数据是否异常或为空']) {
-                    filterFlag = true;
+            const filterNormalMediaFun = {
+                '是否有json文件': function (val) {
+                    if (val !== 1) return true;
+                },
+                '是否有xml/lrc文件': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否有mp4': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否有m4a_accom': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否有m4a_org': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否有图片': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否有mv图片': function (val, mediaItem) {
+                    if (val !== 1) return true;
+                },
+                '是否是空目录': function (val) {
+                    if (val !== 1) return true;
+                },
+                'JSON文件数据是否异常或为空': function (val) {
+                    return val && true;
+                },
+                '是否存在OKB文件': function (val) {
+                    if (val > 0) return true;
                 }
-
-                if (!filterFlag) continue;
-
-                filterData.push(mediaItem);
-            }
+            };
+            let filterData = mediaData.filter(function (cur) {
+                let filterFlag = false;
+                for (let key in cur) {
+                    if (!cur.hasOwnProperty(key)) continue;
+                    if (!filterNormalMediaFun[key]) continue;
+                    filterFlag = filterNormalMediaFun[key](cur[key]);
+                    if (filterFlag) break;
+                }
+                if (filterFlag) return cur;
+            });
 
             return filterData;
         },
 
         async filterAttribute(mediaData) {
-            let filterData = [];
+            this.checkAttributes = ['是否有json文件', '是否有xml/lrc文件', '是否有mp4', '是否有m4a_accom', '是否有m4a_org', '是否有图片', '是否有mv图片', '是否是空目录', 'JSON文件数据是否异常或为空', '是否存在OKB文件'];
+            this.startCheckIndex = 0;
 
-            let filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有json文件'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有json文件'];
+            this.filterAttributeMap = {
+                '是否有json文件': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有xml/lrc文件': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有mp4': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有m4a_accom': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有m4a_org': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有图片': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否有mv图片': function (val) {
+                    if (val === 1) return true;
+                },
+                '是否是空目录': function (val) {
+                    if (val === 1) return true;
+                },
+                'JSON文件数据是否异常或为空': function (val) {
+                    return val || true;
+                },
+                '是否存在OKB文件': function (val) {
+                    if (val === 0) return true;
+                }
+            };
+
+            this.filterAttributeFun = function (filterMediaData) {
+                let filterFlag = false;
+                let filterData = [];
+                let curCheckAttribute = this.checkAttributes[this.startCheckIndex];
+                for (let mediaItem of filterMediaData) {
+                    // 做判断
+                    let mediaItemVla =  mediaItem[curCheckAttribute];
+                    if (!this.filterAttributeMap[curCheckAttribute]) continue;
+                    filterFlag = this.filterAttributeMap[curCheckAttribute](mediaItemVla);
+                    if (filterFlag) {
+                        delete mediaItem[curCheckAttribute];
+
+                    }
                     filterData.push(mediaItem);
                 }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
+                if (this.startCheckIndex === this.checkAttributes.length -1) return filterData;
+                this.startCheckIndex++;
+                return this.filterAttributeFun(filterData);
+            };
 
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有xml/lrc文件'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有xml/lrc文件'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
 
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有mp4'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有mp4'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有m4a_accom'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有m4a_accom'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有m4a_org'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有m4a_org'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有图片'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有图片'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有mv图片'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有mv图片'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否是空目录'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否是空目录'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['JSON文件数据是否异常或为空']) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['JSON文件数据是否异常或为空'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            return mediaData;
+            return this.filterAttributeFun(mediaData);
         },
 
         async conversionScanningInfo(fileMediaData) {
@@ -373,6 +333,9 @@ module.exports = (app, taskInfo) => {
                         res = '文件不存在';
                     }
                     return res;
+                },
+                '是否存在OKB文件': function (val) {
+                    return val > 0 ? '是' : '不是'
                 }
             };
             for (let fileMediaItem of fileMediaData) {

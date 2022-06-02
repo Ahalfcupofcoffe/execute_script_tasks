@@ -83,16 +83,16 @@ const CORE_CONFIG = {
                 'output': path.join(ROOT_PATH, 'xlsx', 'merge_around_media', `video.xlsx`)
             },
             // 移动文件
-            'cp_file': {
+            'mv_file': {
                 'switch': false,
-                'name': 'cp_file',
+                'name': 'mv_file',
                 'suffix': '.mp4',
                 'input': path.join(ROOT_PATH, '../', 'k_mv'),
                 'output': path.join(ROOT_PATH, '../', 'mv_video')
             },
             // 扫描多个目录任务
             'scanning_catalogues': {
-                'switch': true,
+                'switch': false,
                 'name': 'scanning_catalogues',
                 'inputs': [
                     path.join(ROOT_PATH, '../', 'LIVE_2597'),
@@ -102,7 +102,127 @@ const CORE_CONFIG = {
                     path.join(ROOT_PATH, '../', 'top_6000_1'),
                     path.join(ROOT_PATH, '../', 'top_6000_2'),
                     path.join(ROOT_PATH, '../', 'top_6000_3'),
-                    path.join(ROOT_PATH, '../', 'top_1481')
+                    path.join(ROOT_PATH, '../', 'top_1481'),
+                    path.join(ROOT_PATH, '../', 'exclusive_7162_20220411'),
+                    path.join(ROOT_PATH, '../', 'top_1590_20220411'),
+                ],
+                'outputs': path.join(ROOT_PATH, 'xlsx', 'scanning_catalogues')
+            },
+            // 扫描缺失
+            'scanning_defect': {
+                'switch': false,
+                'name': 'scanning_defect',
+                'scans': [
+                    path.join(ROOT_PATH, '../', 'exclusive_7162_20220411'),
+                    path.join(ROOT_PATH, '../', 'top_1590_20220411')
+                ],
+                'input': path.join(ROOT_PATH, 'xlsx', 'scanning_defect', 'total', 'media_defect.xlsx'),
+                'output': path.join(ROOT_PATH, 'xlsx', 'scanning_defect', 'defect', `media_defect_${now}.xlsx`)
+            },
+            // txt文件转excel
+            'txt_turn_excel': {
+                'switch': false,
+                'name': 'txt_turn_excel',
+                'input': path.join(ROOT_PATH, 'txt', 'txt_turn_excel', 'nohup.txt'),
+                'output': path.join(ROOT_PATH, 'xlsx', 'txt_turn_excel', `empty_file_list_${now}.xlsx`)
+            },
+            // 媒资对比
+            'media_contrast': {
+                'switch': false,
+                'name': 'media_contrast',
+                'inputs': [
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2')
+                ],
+                'contrast_dirs': [
+                    path.join(ROOT_PATH, 'xlsx', 'media_contrast', 'inp', 'media_exclusive_6000_2.xlsx')
+                ],
+                'output': path.join(ROOT_PATH, 'xlsx', 'media_contrast', 'out', `media_contrast_res_${now}.xlsx`)
+            },
+            // 异常媒资删除
+            'abnormal_media_del': {
+                'switch': false,
+                'name': 'abnormal_media_del',
+                'inputs': [
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2')
+                ],
+                'delete_dirs': [
+                    path.join(ROOT_PATH, 'xlsx', 'abnormal_media_del', 'inp', 'media_exclusive_6000_2.xlsx')
+                ],
+                'output': path.join(ROOT_PATH, 'xlsx', 'abnormal_media_del', 'out', `media_del_omission_${now}.xlsx`)
+            },
+            // 导出多个目录下的媒资数据表
+            'output_catalogues_media': {
+                'switch': false,
+                'name': 'output_catalogues_media',
+                'inputs': [
+                    path.join(ROOT_PATH, '../', 'LIVE_2597'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_1'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2'),
+                    path.join(ROOT_PATH, '../', 'exclusive_5965'),
+                    path.join(ROOT_PATH, '../', 'top_6000_1'),
+                    path.join(ROOT_PATH, '../', 'top_6000_2'),
+                    path.join(ROOT_PATH, '../', 'top_6000_3'),
+                    path.join(ROOT_PATH, '../', 'top_1481'),
+                    path.join(ROOT_PATH, '../', 'exclusive_7162_20220411'),
+                    path.join(ROOT_PATH, '../', 'top_1590_20220411'),
+                ],
+                'output': path.join(ROOT_PATH, 'xlsx', 'output_catalogues_media', 'v'),
+                'outputName': 'media_data_info',
+                'outputFileSerialNum': 0,
+                'outputFileSuffix': '.xlsx',
+                'outputMediaSize': 3000,
+                'errOutputPrint': true,
+                'errExcelFilePath': path.join(ROOT_PATH, 'xlsx', 'output_catalogues_media', 'fl', `media_err_${now}.xlsx`)
+            },
+            // 媒资数据表转化为合并视频音频媒资数据表
+            'conversion_merge': {
+                'switch': false,
+                'name': 'conversion_merge',
+                'input': `${path.join(ROOT_PATH, 'xlsx', 'conversion_merge', 'inp')}`,
+                'output': `${path.join(ROOT_PATH, 'xlsx', 'conversion_merge', 'out')}`
+            },
+            // 伴奏处理
+            'accompaniment_handle': {
+                'switch': true,
+                'name': 'accompaniment_handle',
+                'filterCatalogues': [ // 过滤目录
+                    path.join(ROOT_PATH, '../', 'LIVE_2597'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_1'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2'),
+                    path.join(ROOT_PATH, '../', 'exclusive_5965'),
+                    path.join(ROOT_PATH, '../', 'top_6000_1'),
+                    path.join(ROOT_PATH, '../', 'top_6000_2'),
+                    path.join(ROOT_PATH, '../', 'top_6000_3'),
+                    path.join(ROOT_PATH, '../', 'top_1481'),
+                    path.join(ROOT_PATH, '../', 'exclusive_7162_20220411'),
+                    path.join(ROOT_PATH, '../', 'top_1590_20220411'),
+                    path.join(ROOT_PATH, '../', 'k_song')
+                ],
+                'mergeSourcesCatalogues': [ // 合并源目录
+                    path.join(ROOT_PATH, '../', 'LIVE_2597'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_1'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2'),
+                    path.join(ROOT_PATH, '../', 'exclusive_5965'),
+                    path.join(ROOT_PATH, '../', 'top_6000_1'),
+                    path.join(ROOT_PATH, '../', 'top_6000_2'),
+                    path.join(ROOT_PATH, '../', 'top_6000_3'),
+                    path.join(ROOT_PATH, '../', 'top_1481'),
+                    path.join(ROOT_PATH, '../', 'k_song')
+                ],
+                'mergeTargetCatalogues': [ // 合并目标目录
+                    path.join(ROOT_PATH, '../', 'exclusive_7162_20220411'),
+                    path.join(ROOT_PATH, '../', 'top_1590_20220411')
+                ],
+                'inputs': [
+                    path.join(ROOT_PATH, '../', 'LIVE_2597'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_1'),
+                    path.join(ROOT_PATH, '../', 'exclusive_6000_2'),
+                    path.join(ROOT_PATH, '../', 'exclusive_5965'),
+                    path.join(ROOT_PATH, '../', 'top_6000_1'),
+                    path.join(ROOT_PATH, '../', 'top_6000_2'),
+                    path.join(ROOT_PATH, '../', 'top_6000_3'),
+                    path.join(ROOT_PATH, '../', 'top_1481'),
+                    path.join(ROOT_PATH, '../', 'k_song')
                 ],
                 'outputs': path.join(ROOT_PATH, 'xlsx', 'scanning_catalogues')
             }
