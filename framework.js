@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const tracer = require('tracer');
-const XLXS = require('xlsx');
+const XLSX = require('xlsx');
 const controllers = require('require-all');
 const { writeLine } = require('lei-stream');
 
@@ -133,6 +133,10 @@ class Framework {
     async checkExistences(...paths) {
         try {
             for (const path of paths) {
+                if (Array.isArray(path)) {
+                    return await this.checkExistences(...path);
+                }
+
                 await this.checkExistence(path);
             }
         } catch (err) {
@@ -157,7 +161,7 @@ class Framework {
         });
     }
 
-    // 检查目录
+    // 异步检查目录
     checkDir(path) {
         return new Promise((resolve, reject) => {
             fs.stat(path, (err, stats) => {
@@ -174,6 +178,12 @@ class Framework {
         });
     }
 
+    // 同步检查路径
+    checkPathSync(path) {
+        return fs.existsSync(path);
+    }
+
+    // 写入
     async writeText(path, writeData) {
         const writeLineStream = writeLine(path, {
             // 换行符，默认\n
@@ -220,14 +230,26 @@ class Framework {
     async readExcel(path) {
         return new Promise((resolve, reject) => {
             try {
-                let workbook = XLXS.readFile(path);
+                let workbook = XLSX.readFile(path);
                 let sheetNames = workbook.SheetNames; //获取表明
                 let data = [];
                 for (let sheetName of sheetNames) {
                     let sheet = workbook.Sheets[sheetName]; //通过表明得到表对象
-                    data = XLXS.utils.sheet_to_json(sheet); // 通过工具将表对象的数据读出来并转成json
+                    data = XLSX.utils.sheet_to_json(sheet); // 通过工具将表对象的数据读出来并转成json
                 }
                 resolve(data);
+            } catch (err) {
+                this.logger.error(`读取excel失败：${err.message}`);
+                reject(err);
+            }
+        });
+    }
+
+    async readExcelWorkBook(path) {
+        return new Promise((resolve, reject) => {
+            try {
+                let workbook = XLSX.readFile(path);
+                resolve(workbook);
             } catch (err) {
                 this.logger.error(`读取excel失败：${err.message}`);
                 reject(err);
@@ -248,6 +270,7 @@ class Framework {
         return data;
     }
 
+    // 异步读取文件
     readFile(path, options = {}) {
         return new Promise((resolve, reject) => {
             fs.readFile(path, options, (err, data) => {
@@ -260,6 +283,7 @@ class Framework {
         });
     }
 
+    // 生成excel
     async generateExcel(months, sheets, filePath) {
         // 定义操作文档
         let workbook = {
@@ -267,9 +291,25 @@ class Framework {
             Sheets: sheets
         };
 
-        XLXS.writeFile(workbook, filePath); //将数据写入文件
+        XLSX.writeFile(workbook, filePath); //将数据写入文件
     }
 
+    async fixedGenerateExcel(data, filePath) {
+        try {
+            let sheets = {};
+            let sheetNames = [];
+            let sheetName = 'shell1';
+            let jsonData = XLSX.utils.json_to_sheet(data); //通过工具将json转表对象
+            sheetNames.push(sheetName);
+            if (!sheets[sheetName]) sheets[sheetName] = Object.assign({}, jsonData);
+            await this.generateExcel(sheetNames, sheets, filePath);
+        } catch (err) {
+            this.logger.error(`生成excel文件失败，err:${err}`);
+            throw err;
+        }
+    }
+
+    // 移动文件
     async mvFile(oldPath, newPath) {
         return new Promise((resolve, reject) => {
             fs.rename(oldPath, newPath, (err) => {
@@ -280,11 +320,12 @@ class Framework {
         });
     }
 
+    // 复制文件
     async cpFile(src, dest, mode) {
         return new Promise((resolve, reject) => {
            fs.copyFile(src, dest, (err => {
                if (err) return reject(err);
-               this.logger.debug(`文件：${src} copy complete!`);
+               this.logger.debug(`文件：${src} copy to ${dest} complete!`);
                resolve();
            }));
         });
@@ -309,11 +350,42 @@ class Framework {
         }
     }
 
+    async deleteFile(filePath) {
+        return new Promise((resolve, reject) => {
+            fs.unlink(filePath, (err) => {
+               if (err) {
+                   this.logger.error(`删除文件：${filePath}失败，错误信息(err:${err})`);
+                   return reject(err);
+               }
+               resolve(true);
+            });
+        });
+    }
+
+    deleteFileSync(filePath) {
+        fs.unlinkSync(filePath);
+    }
+
+    // 数组判断
     isArray(arg) {
         if (!Array.isArray) {
             return Object.prototype.toString.call(arg) === '[object Array]';
         }
         return Array.isArray(arg);
+    }
+
+    // 异步创建目录
+    async createDir(path, mode = 0o777) {
+        return new Promise((resolve, reject) => {
+            if (this.checkPathSync(path)) return resolve();
+            fs.mkdir(path, mode, (err) => {
+                if (err) {
+                    this.logger.error(`创建目录：${path}失败，错误信息(err:${err})`);
+                    return reject(err);
+                }
+                resolve();
+            })
+        });
     }
 
     main() {

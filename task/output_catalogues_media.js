@@ -65,10 +65,10 @@ module.exports = (app, taskInfo) => {
 
         async readMediaDir(dir, that) {
             try {
-                app.logger.debug(`开始第${that.roundNum}轮读取媒资数据，所在目录：${dir}`);
+                app.logger.debug(`当前读取第${that.roundNum}个目录，所在位置：${dir}`);
                 const mediaResourceNames = await app.readDir(dir);
                 const mediaResourceLength = mediaResourceNames.length;
-                app.logger.debug(`所需读取的总媒资数据：${mediaResourceLength}条`);
+                app.logger.debug(`准备读取目录中所有的媒资数据，共：${mediaResourceLength}条`);
                 let readMediaNum = 0;
                 for (let mediaResourceName of mediaResourceNames) {
                     const mediaResourceDir = path.join(dir, mediaResourceName);
@@ -87,36 +87,49 @@ module.exports = (app, taskInfo) => {
                         that.mediaNum++;
                         that.errMediaData.num++;
                         readMediaNum++;
-                        app.logger.debug(`当前是第${that.roundNum}轮读取媒资数据，完成读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
+                        app.logger.debug(`当前读取第${that.roundNum}个目录媒资数据，读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
                         continue;
                     }
                     let jsonFileDir = path.join(mediaResourceDir, jsonFile.join(''));
                     await app.checkFile(jsonFileDir);
                     let jsonContent = await app.readFile(jsonFileDir, {'encoding': 'utf8'});
                     let content = JSON.parse(jsonContent);
-                    let sortMediaItem = {};
                     let mediaItem = await that.converterJsonData(content);
-                    if (Object.prototype.toString.call(mediaItem) !== '[object Object]' || !sortMediaItem) {
+                    if (Object.prototype.toString.call(mediaItem) !== '[object Object]') {
                         // 出现不可预期的JSON数据，先跳过遍历，然后记录下来
                         that.errMediaData.data.push({'所在目录': mediaResourceDir, '错误提示': '出现不可预期的JSON数据字段', '字段名': mediaItem});
                         that.mediaNum++;
                         that.errMediaData.num++;
                         readMediaNum++;
-                        app.logger.debug(`当前是第${that.roundNum}轮读取媒资数据，完成读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
+                        app.logger.debug(`当前读取第${that.roundNum}个目录媒资数据，读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
                         continue;
                     }
-                    // 新增字段
-                    sortMediaItem['所在目录'] = mediaResourceDir;
-                    mediaItem = Object.assign(sortMediaItem, mediaItem);
-                    mediaItem['读取文件目录地址'] = jsonFileDir;
+                    // 记录图片路径
+                    var imgPath = '';
+                    for (let mediaFileName of mediaFileNames) {
+                        if (!that.mateImage(mediaFileName)) continue;
+                        imgPath = path.join(mediaResourceDir, mediaFileName);
+                        if (mediaFileName.indexOf('mv') === -1) {
+                            mediaItem['img2'] = imgPath;
+                        } else {
+                            mediaItem['img1'] = imgPath;
+                        }
+                    }
+                    // 记录媒资路径
+                    var videoPath = '';
+                    for (let mediaFileName of mediaFileNames) {
+                        if (!that.mateVideo(mediaFileName)) continue;
+                        videoPath = path.join(mediaResourceDir, mediaFileName);
+                        mediaItem['视频文件路径'] = videoPath;
+                    }
                     that.mediaData.data.push(mediaItem);
                     that.mediaNum++;
                     that.mediaData.num++;
                     readMediaNum++;
-                    app.logger.debug(`当前是第${that.roundNum}轮读取媒资数据，完成读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
+                    app.logger.debug(`当前读取第${that.roundNum}个目录媒资数据，读取进度：${that.progressCalculation(readMediaNum, mediaResourceLength)}%`);
                     // 判断是否要分表生成
                     if (!that.taskInfo.outputMediaSize) {
-                        app.logger.debug(`当前是第${that.roundNum}轮读取媒资数据，没有配置分表生成媒资数据表，会统一生成，本轮生成跳过`);
+                        app.logger.debug(`当前读取第${that.roundNum}个目录媒资数据，没有配置分表生成媒资数据表，会统一生成，本轮生成跳过`);
                         continue;
                     }
                     // 配置了分表生成，但不满足数据表存储媒资量，读取下一条媒资
@@ -136,9 +149,8 @@ module.exports = (app, taskInfo) => {
                     if (!that.taskInfo.outputMediaSize) {
                         // 是最后一轮且没有配置分表生成
                         app.logger.debug(`最后一轮读取媒资数据完成且没有配置分表生成媒资数据，准备所有数据统一生成`);
-                        that.taskInfo.outputFileSerialNum++;
-                        const mediaDataFileDir = path.join(that.taskInfo.output, `${that.taskInfo.outputName}_${that.taskInfo.outputFileSerialNum}${that.taskInfo.outputFileSuffix}`);
-                        await that.generateMediaDataTable(that.taskInfo.outputMediaSize, mediaDataFileDir, {'retry': 3});
+                        const mediaDataFileDir = path.join(that.taskInfo.output, `${that.taskInfo.outputName}${that.taskInfo.outputFileSuffix}`);
+                        await that.generateMediaDataTable(that.mediaData.data.length, mediaDataFileDir, {'retry': 3});
                         return;
                     }
                     // 需要分表生成
@@ -162,41 +174,50 @@ module.exports = (app, taskInfo) => {
         },
 
         converterJsonData(content) {
-            let mediaItem = {};
+            let mediaItem = {
+                '歌曲Id': '',
+                '歌名': '',
+                '歌手1 Id': '',
+                '歌手1 歌手名': '',
+                '歌手2 Id': '',
+                '歌手2 歌手名': '',
+                '歌手3 Id': '',
+                '歌手3 歌手名': '',
+                '歌手4 Id': '',
+                '歌手4 歌手名': '',
+                '歌手5 Id': '',
+                '歌手5 歌手名': '',
+                '语言': '',
+                '版本': '',
+                '标签': '',
+                '地区': '',
+                '类型': '',
+                '时长（单位：秒）': '',
+                '发行时间': ''
+            };
             for (let key in content) {
                 if (!content.hasOwnProperty(key)) continue;
-                if (key == 'video_duration') continue;
                 let val = content[key];
-                if (key == 'has_captions') {
-                    val = this.verbalization[key](val);
-                    if (!val) {
-                        // 出现未知字段值，直接跳过
-                        mediaItem = false;
-                        return mediaItem;
-                    }
-                    mediaItem['是否有字幕'] = val;
+                if (key == 'video_duration') {
+                    mediaItem['时长（单位：秒）'] = Math.round(val / 1000);
                 } else if (key == 'version') {
                     mediaItem['版本'] = val;
                 } else if (key == 'language') {
                     mediaItem['语言'] = val;
                 } else if (key == 'kmid') {
-                    mediaItem['文件名'] = val;
-                } else if (key == 'duration') {
-                    mediaItem['时长'] = val;
+                    mediaItem['歌曲Id'] = val;
                 } else if (key == 'song_name') {
                     mediaItem['歌名'] = val;
                 } else if (key == 'tags') {
+                    mediaItem['标签'] = val;
+                } else if (key == 'singer') {
+                    this.getSingleInfo(val, mediaItem);
+                } else if (key == 'area') {
+                    mediaItem['地区'] = val;
+                } else if (key == 'genre') {
                     mediaItem['类型'] = val;
-                } else if (key == 'singer_name') {
-                    mediaItem['歌手'] = val.join(',');
-                } else if (key == 'has_lrc') {
-                    val = this.verbalization[key](val);
-                    if (!val) {
-                        // 出现未知字段值，直接跳过
-                        mediaItem = false;
-                        return mediaItem;
-                    }
-                    mediaItem['有没有歌词'] = val;
+                } else if (key == 'public_time') {
+                    mediaItem['发行时间'] = val;
                 } else {
                     mediaItem = false;
                     // 出现未知字段，直接跳过
@@ -231,6 +252,13 @@ module.exports = (app, taskInfo) => {
             }
         },
 
+        getSingleInfo(singleData, mediaData) {
+            for (let i = 0, len = singleData.length; i < len; i++) {
+                let item = singleData[i];
+                mediaData[`歌手${i+1} Id`] = item.singer_id;
+                mediaData[`歌手${i+1} 歌手名`] = item.singer_name;
+            }
+        },
         progressCalculation(curProgress, totalProgress) {
             return parseInt((curProgress / totalProgress) * 100);
         },
@@ -315,6 +343,12 @@ module.exports = (app, taskInfo) => {
 
         mateJson(filePath) {
             return filePath.indexOf('.json') !== -1;
+        },
+        mateImage(filePath) {
+            return filePath.indexOf('.jpg') !== -1 || filePath.indexOf('.png') !== -1;
+        },
+        mateVideo(filePath) {
+            return filePath.indexOf('.mp4') !== -1;
         }
     };
 };
