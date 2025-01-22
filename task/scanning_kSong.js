@@ -51,6 +51,11 @@ module.exports = (app, taskInfo) => {
                     fileMediaItem = Object.assign(fileMediaItem, await this.scanningFile(files, resourceDir, fileDir));
                     fileMediaData.push(fileMediaItem);
 
+                    if (fileMediaItem['是否有.json文件'] === 0) {
+                        fileMediaItem['song_name'] = '未知歌名';
+                        app.logger.debug(`找不到对应的json文件，文件名：${resourceDir}.json，文件路径：${fileDir}`);
+                        continue;
+                    }
                     let jsonFile = files.filter((file) => {
                         return this.mateJson(file)
                     });
@@ -69,40 +74,30 @@ module.exports = (app, taskInfo) => {
 
         async scanningFile(files, resourceDir, fileDir) {
             let fileFormatData = {
-                '是否有json文件': 0,
-                '是否有xml/lrc文件': 0,
-                '是否有mp4': 0,
-                '是否有m4a_accom': 0,
-                '是否有m4a_org': 0,
-                '是否有图片': 0,
-                '是否有mv图片': 0
+                '是否有.json文件': 0,
+                '是否有.lrc歌词文件': 0,
+                '是否有.mp4视频文件': 0,
+                '是否有.jpg海报图': 0,
+                '是否有mv开头的.jpg海报图': 0
             };
             for (let file of files) {
                 const fileSuffix = path.extname(file);
                 if (fileSuffix === '.json') {
-                    fileFormatData['是否有json文件']++;
-                } else if (fileSuffix === '.xml' || fileSuffix === '.lrc') {
-                    fileFormatData['是否有xml/lrc文件']++;
+                    fileFormatData['是否有.json文件']++;
+                } else if (fileSuffix === '.lrc') {
+                    fileFormatData['是否有.lrc歌词文件']++;
                 } else if (fileSuffix === '.mp4') {
                     if (this.matchingNewMp4(file, resourceDir)) {
-                        fileFormatData['是否有mp4']++;
+                        fileFormatData['是否有.mp4视频文件']++;
                     } else {
                         app.logger.error(`未知格式MP4，打印一下文件名：${file}，所在目录：${fileDir}`)
                     }
-                } else if (fileSuffix === '.m4a') {
-                    if (this.matchingNewAccom(file)) {
-                        fileFormatData['是否有m4a_accom']++;
-                    } else if (this.matchingNewOrg(file)) {
-                        fileFormatData['是否有m4a_org']++;
-                    } else {
-                        app.logger.error(`未知格式M4A，打印一下文件名：${file}，所在目录：${fileDir}`);
-                    }
-                } else if (fileSuffix === '.jpg' || fileSuffix === '.png') {
+                } else if (fileSuffix === '.jpg') {
                     const fileName = path.parse(file).name;
                     if (fileName === resourceDir) {
-                        fileFormatData['是否有图片']++;
+                        fileFormatData['是否有.jpg海报图']++;
                     } else if (this.matchingMvImg(file, resourceDir)) {
-                        fileFormatData['是否有mv图片']++;
+                        fileFormatData['是否有mv开头的.jpg海报图']++;
                     } else {
                         app.logger.error(`未知格式图片，打印一下文件名：${file}，所在目录：${fileDir}`);
                     }
@@ -117,19 +112,15 @@ module.exports = (app, taskInfo) => {
             const filterData = [];
             for (let mediaItem of mediaData) {
                 let filterFlag = false;
-                if (mediaItem['是否有json文件'] !== 1) {
+                if (mediaItem['是否有.json文件'] !== 1) {
                     filterFlag = true;
-                } else if (mediaItem['是否有xml/lrc文件'] !== 1) {
+                } else if (mediaItem['是否有.lrc歌词文件'] !== 1) {
                     filterFlag = true;
-                } else if (mediaItem['是否有mp4'] !== 1) {
+                } else if (mediaItem['是否有.mp4视频文件'] !== 1) {
                     filterFlag = true;
-                } else if (mediaItem['是否有m4a_accom'] !== 1) {
+                } else if (mediaItem['是否有.jpg海报图'] !== 1) {
                     filterFlag = true;
-                } else if (mediaItem['是否有m4a_org'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有图片'] !== 1) {
-                    filterFlag = true;
-                } else if (mediaItem['是否有mv图片'] !== 1) {
+                } else if (mediaItem['是否有mv开头的.jpg海报图'] !== 1) {
                     filterFlag = true;
                 }
 
@@ -146,10 +137,10 @@ module.exports = (app, taskInfo) => {
 
             let filterFlag = true;
             for (let mediaItem of mediaData) {
-                if (mediaItem['是否有json文件'] !== 1) {
+                if (mediaItem['是否有.json文件'] !== 1) {
                     filterFlag = false;
                 } else {
-                    delete mediaItem['是否有json文件'];
+                    delete mediaItem['是否有.json文件'];
                     filterData.push(mediaItem);
                 }
             }
@@ -160,10 +151,10 @@ module.exports = (app, taskInfo) => {
             filterData = [];
             filterFlag = true;
             for (let mediaItem of mediaData) {
-                if (mediaItem['是否有xml/lrc文件'] !== 1) {
+                if (mediaItem['是否有.lrc歌词文件'] !== 1) {
                     filterFlag = false;
                 } else {
-                    delete mediaItem['是否有xml/lrc文件'];
+                    delete mediaItem['是否有.lrc歌词文件'];
                     filterData.push(mediaItem);
                 }
             }
@@ -174,10 +165,10 @@ module.exports = (app, taskInfo) => {
             filterData = [];
             filterFlag = true;
             for (let mediaItem of mediaData) {
-                if (mediaItem['是否有mp4'] !== 1) {
+                if (mediaItem['是否有.mp4视频文件'] !== 1) {
                     filterFlag = false;
                 } else {
-                    delete mediaItem['是否有mp4'];
+                    delete mediaItem['是否有.mp4视频文件'];
                     filterData.push(mediaItem);
                 }
             }
@@ -188,10 +179,10 @@ module.exports = (app, taskInfo) => {
             filterData = [];
             filterFlag = true;
             for (let mediaItem of mediaData) {
-                if (mediaItem['是否有m4a_accom'] !== 1) {
+                if (mediaItem['是否有.jpg海报图'] !== 1) {
                     filterFlag = false;
                 } else {
-                    delete mediaItem['是否有m4a_accom'];
+                    delete mediaItem['是否有.jpg海报图'];
                     filterData.push(mediaItem);
                 }
             }
@@ -202,38 +193,10 @@ module.exports = (app, taskInfo) => {
             filterData = [];
             filterFlag = true;
             for (let mediaItem of mediaData) {
-                if (mediaItem['是否有m4a_org'] !== 1) {
+                if (mediaItem['是否有mv开头的.jpg海报图'] !== 1) {
                     filterFlag = false;
                 } else {
-                    delete mediaItem['是否有m4a_org'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有图片'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有图片'];
-                    filterData.push(mediaItem);
-                }
-            }
-            if (filterFlag) {
-                mediaData = filterData;
-            }
-
-            filterData = [];
-            filterFlag = true;
-            for (let mediaItem of mediaData) {
-                if (mediaItem['是否有mv图片'] !== 1) {
-                    filterFlag = false;
-                } else {
-                    delete mediaItem['是否有mv图片'];
+                    delete mediaItem['是否有mv开头的.jpg海报图'];
                     filterData.push(mediaItem);
                 }
             }
@@ -246,63 +209,41 @@ module.exports = (app, taskInfo) => {
         },
 
         async conversionScanningInfo(fileMediaData) {
-            console.log(fileMediaData);
             const mappingFun = {
-                '是否有json文件': function (val, mediaItem) {
+                '是否有.json文件': function (val, mediaItem) {
                     if (val > 1) {
                         app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多个json文件`);
                         return '有且存在多个文件';
                     }
                     return val === 1 ? '有' : '没有';
                 },
-                '是否有xml/lrc文件': function (val, mediaItem) {
+                '是否有.lrc歌词文件': function (val, mediaItem) {
                     if (val > 1) {
                         app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多个xml/lrc文件`);
                         return '有且存在多个文件';
                     }
                     return val === 1 ? '有' : '没有';
                 },
-                '是否有mp4': function (val, mediaItem) {
+                '是否有.mp4视频文件': function (val, mediaItem) {
                     if (val > 1) {
                         app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多个MP4文件`);
                         return '有且存在多个文件';
                     }
                     return val === 1 ? '有' : '没有';
                 },
-                '是否有m4a_accom': function (val, mediaItem) {
-                    if (val > 1) {
-                        app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多个m4a_accom文件`);
-                        return '有且存在多个文件';
-                    }
-                    return val === 1 ? '有' : '没有';
-                },
-                '是否有m4a_org': function (val, mediaItem) {
-                    if (val > 1) {
-                        app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多个m4a_org文件`);
-                        return '有且存在多个文件';
-                    }
-                    return val === 1 ? '有' : '没有';
-                },
-                '是否有图片': function (val, mediaItem) {
+                '是否有.jpg海报图': function (val, mediaItem) {
                     if (val > 1) {
                         app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多张图片`);
                         return '有且存在多张';
                     }
                     return val === 1 ? '有' : '没有';
                 },
-                '是否有mv图片': function (val, mediaItem) {
+                '是否有mv开头的.jpg海报图': function (val, mediaItem) {
                     if (val > 1) {
                         app.logger.error(`扫描目录(${mediaItem['目录名']})下存在多张mv图片`);
                         return '有且存在多张';
                     }
                     return val === 1 ? '有' : '没有';
-                },
-                '是否是上一批媒资': function (val, mediaItem) {
-                    if (val > 1) {
-                        app.logger.error(`扫描目录(${mediaItem['目录名']})在旧媒资数据中存在多个`);
-                        return '是且存在多个';
-                    }
-                    return val === 1 ? '是' : '不是';
                 }
             };
             for (let fileMediaItem of fileMediaData) {
@@ -316,7 +257,8 @@ module.exports = (app, taskInfo) => {
         },
 
         matchingNewMp4(fileName, resourceDir) {
-            const re = eval("/^(480p|720p|1080p)(?=_" + resourceDir + "\.mp4)/");
+            // 480p_128k_0003brW61bDJ2w
+            const re = eval("/^(480p|720p|1080p)_128k(?=_" + resourceDir + "\.mp4)/");
             return re.test(fileName);
         },
         matchingNewAccom(fileName) {
