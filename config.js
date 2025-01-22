@@ -48,7 +48,6 @@ const CORE_CONFIG = {
                 'output': path.join(ROOT_PATH, 'xlsx', 'output_catalogues_media', 'v'),
                 'outputName': `media_data_info_${now}`,
                 'outputFileSuffix': '.xlsx',
-                'errOutputPrint': true,
                 'errExcelFilePath': path.join(ROOT_PATH, 'xlsx', 'output_catalogues_media', 'fl', `media_err_${now}.xlsx`)
             }
         }
